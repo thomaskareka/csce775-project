@@ -1,0 +1,12 @@
+algorithm: random
+seed: 1000
+env:
+  game: "SuperMarioBros-Nes-v0"
+  render_mode: "human"
+model:
+  type: base
+
+training:
+  total_steps: 1000000
+  lr: 1e-4
+  gamma: 0.99
