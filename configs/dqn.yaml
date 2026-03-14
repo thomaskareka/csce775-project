@@ -1,0 +1,34 @@
+algorithm: dqn
+
+env:
+  game: "SuperMarioBros-Nes-v0"
+  render_mode: "human"
+model:
+  type: simple_linear
+  hidden_dim: 128
+
+training:
+  total_steps: 1000000
+  lr: !!float 1e-4
+  gamma: 0.99
+
+  batch_size: 64
+  buffer_size: 50000
+
+  epsilon_start: 1.0
+  epsilon_min: 0.1
+  epsilon_steps: 100000
+
+  update_target_steps: 2000
+
+observation:
+  pipeline:
+    - name: resize
+      width: 64
+      height: 64 
+    - name: grayscale
+
+reward:
+  pipeline:
+    - name: death_penalty
+      penalty: -1

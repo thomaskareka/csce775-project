@@ -1,4 +1,4 @@
-import os, json, time, torch, random, yaml
+import os, json, time, torch, random, yaml, gymnasium
 import numpy as np
 from pathlib import Path
 from datetime import datetime
@@ -6,6 +6,8 @@ from datetime import datetime
 from algorithms import get_algorithm
 from game_env.mario_env import make_env
 from models import build_model
+from game_env.observations import build_observation_pipeline
+from game_env.rewards import build_reward_pipeline
 
 def get_device():
     if torch.cuda.is_available():
@@ -26,6 +28,11 @@ class TrainRunner:
         self.exp_dir = self._create_experiment_directory()
 
         self.env = make_env(config["env"], seed=self.seed)
+
+        self.env = build_observation_pipeline(self.env, self.config)
+        self.env = build_reward_pipeline(self.env, self.config)
+
+        self._predect_model_size()
 
         self.model = build_model(config["model"]).to(self.device)
         algorithm_class = get_algorithm(config["algorithm"])
@@ -63,6 +70,46 @@ class TrainRunner:
         runner.algorithm.load_state_dict(checkpoint["algo_state"])
 
         return runner
+
+
+#TODO: make this better
+    def _predect_model_size(self):
+        obs_shape = self.env.observation_space.shape
+        action_space = self.env.action_space
+
+        model_cfg = self.config["model"]
+
+        #input
+        if len(obs_shape) == 1:
+            model_cfg["input_dim"] = obs_shape[0]
+        elif len(obs_shape) == 3:
+            h, w, c = obs_shape
+            
+            if model_cfg["type"] == "simple_linear":
+                model_cfg["input_dim"] = h * w * c
+            else:
+                model_cfg["height"] = h
+                model_cfg["width"] = w
+                model_cfg["input_channels"] = c
+        else:
+            raise ValueError(f"bad observation shape {obs_shape}")
+        
+        #output
+        if isinstance(action_space, gymnasium.spaces.Discrete):
+            model_cfg["action_type"] = "discrete"
+            model_cfg["num_actions"] = action_space.n
+        elif isinstance(action_space, gymnasium.spaces.MultiBinary):
+            model_cfg["action_type"] = "multibinary"
+            model_cfg["num_actions"] = action_space.n
+        elif isinstance(action_space, gymnasium.spaces.Box):
+            model_cfg["action_type"] = "continuous"
+            model_cfg["action_dim"] = action_space.shape[0]
+
+            model_cfg["action_low"] = action_space.low
+            model_cfg["action_high"] = action_space.high
+        else:
+            print(action_space.shape)
+            raise ValueError(f"bad action space {action_space}")
 
     def _set_seed(self, seed: int):
         random.seed(seed)
