@@ -3,6 +3,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
+from collections import deque
 
 from algorithms import register_algorithm
 from algorithms.base import BaseAlgorithm
@@ -33,6 +34,8 @@ class AtariDQN(BaseAlgorithm):
         self.ms_grad = config["ms_grad"]
 
         self.replay_start_size = config["replay_start_size"]
+
+        self.save_every = config["save_every"]
 
         self.emulator_frames = 0
         self.action_steps = 0
@@ -68,11 +71,12 @@ class AtariDQN(BaseAlgorithm):
         fraction = self.action_steps / self.epsilon_steps
         return 1.0 + fraction * (self.min_epsilon - 1)
 
-    def train(self, total_steps):
+    def train(self, total_steps, callback):
         obs, _ = self.env.reset()
 
         episode_reward = 0.0
         pbar = tqdm(total=total_steps, desc="training", unit="step")
+        pbar.update(self.action_steps)
         start_time = time.time()
         last_time = start_time
         last_steps = 0
@@ -105,6 +109,9 @@ class AtariDQN(BaseAlgorithm):
                 # print(f"reward: {episode_reward} frames: {self.emulator_frames} steps: {self.action_steps}")
                 obs, info = self.env.reset()
                 episode_reward = 0.0
+            
+            if callback and self.action_steps % self.save_every == 0:
+                callback()
             
             pbar.update(1)
             now = time.time()
@@ -146,3 +153,25 @@ class AtariDQN(BaseAlgorithm):
     
     def update_target(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
+    
+    def state_dict(self):
+        return {
+            "optimizer": self.optimizer.state_dict(),
+            "target_net": self.target_net.state_dict(),
+            "emulator_frames": self.emulator_frames,
+            "action_steps": self.action_steps,
+            "param_updates": self.param_updates,
+            "epsilon": self.epsilon,
+        }
+
+    def load_state_dict(self, state):
+        print(state)
+
+        self.optimizer.load_state_dict(state["optimizer"])
+        self.target_net.load_state_dict(state["target_net"])
+
+        self.emulator_frames = state["emulator_frames"]
+        self.action_steps = state["action_steps"]
+        self.param_updates = state["param_updates"]
+
+        self.epsilon = state["epsilon"]

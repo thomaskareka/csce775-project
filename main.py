@@ -34,6 +34,8 @@ def main():
         print("Evaluating model")
     elif args.mode == "resume":
         print("resuming form checkpoint")
+        runner = TrainRunner.load_checkpoint(args.checkpoint)
+        runner.train()
     else:
         raise ValueError(f"unknown mode {args.mode}")
 

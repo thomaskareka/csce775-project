@@ -29,9 +29,9 @@ training:
   update_target_steps: 40000
   grad_update_freq: 4
   action_repeat: 4
+  save_every: 250000
 
   replay_start_size: 50000
-
 
 observation:
   pipeline:

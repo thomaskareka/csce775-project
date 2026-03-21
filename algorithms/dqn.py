@@ -31,7 +31,7 @@ class DQN(BaseAlgorithm):
         self.target_net = copy.deepcopy(self.model).to(self.device)
         self.target_net.eval()
     
-    def train(self, total_steps):
+    def train(self, total_steps, callback):
         obs, _ = self.env.reset()
 
         for step in range(total_steps):

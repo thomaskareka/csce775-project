@@ -45,7 +45,7 @@ class TrainRunner:
     
     def train(self):
         print(f"starting training on {self.device}, {self.exp_dir}")
-        self.algorithm.train(self.config["training"]["total_steps"])
+        self.algorithm.train(self.config["training"]["total_steps"], callback = self.save_checkpoint)
         self.save_checkpoint("final.pt")
 
     def save_checkpoint(self, name="latest.pt"):
@@ -61,7 +61,7 @@ class TrainRunner:
     
     @classmethod
     def load_checkpoint(cls, checkpoint_path: str):
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
 
         config = checkpoint["config"]
         runner = cls(config)
