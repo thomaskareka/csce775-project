@@ -66,7 +66,7 @@ class AtariDQN(BaseAlgorithm):
             return q_values.argmax(dim=1).item()
     
     def update_epsilon(self):
-        if self.emulator_frames >= self.epsilon_steps:
+        if self.action_steps >= self.epsilon_steps:
             return self.min_epsilon
         fraction = self.action_steps / self.epsilon_steps
         return 1.0 + fraction * (self.min_epsilon - 1)
