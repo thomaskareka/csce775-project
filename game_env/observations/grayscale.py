@@ -14,10 +14,9 @@ class GrayScaleObservation(gymnasium.ObservationWrapper):
         self.observation_space = gymnasium.spaces.Box(
             low=old_space.low.min(),
             high=old_space.high.max(),
-            shape=(h, w, 1),
+            shape=(h, w),
             dtype=old_space.dtype
         )
 
     def observation(self, obs):
-        gray = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-        return np.expand_dims(gray, axis=-1)
+        return cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)

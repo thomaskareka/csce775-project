@@ -45,9 +45,10 @@ class DQN(BaseAlgorithm):
                     q_values = self.model(obs_tensor)
                     action = torch.argmax(q_values).item()
             
-            next_obs, reward, terminated, truncated, _ = self.env.step(action)
+            next_obs, reward, terminated, truncated, info = self.env.step(action)
             done = terminated or truncated
-
+            if (reward > 0.0):
+                print(info)
             self.replay_buffer.add(obs, action, reward, next_obs, done)
 
             obs = next_obs
@@ -63,7 +64,7 @@ class DQN(BaseAlgorithm):
             if step % self.update_target_steps == 0:
                 self.target_net.load_state_dict(self.model.state_dict())
             if step % 100 == 0:
-                print(step)
+                print(step, reward, action)
     
     def train_step(self):
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)

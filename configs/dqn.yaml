@@ -2,7 +2,7 @@ algorithm: dqn
 
 env:
   game: "SuperMarioBros-Nes-v0"
-  render_mode: "human"
+  render_mode: human
 model:
   type: simple_linear
   hidden_dim: 128
@@ -17,17 +17,20 @@ training:
 
   epsilon_start: 1.0
   epsilon_min: 0.1
-  epsilon_steps: 100000
+  epsilon_steps: 10000
 
   update_target_steps: 2000
 
 observation:
   pipeline:
+    - name: action_repeat
+      count: 4
     - name: resize
-      width: 64
-      height: 64 
+      width: 128
+      height: 64
     - name: grayscale
-
+    - name: frame_buffer
+      count: 4
 reward:
   pipeline:
     - name: death_penalty
