@@ -66,20 +66,21 @@ class AtariDQN(BaseAlgorithm):
                     self.env.single_action_space.sample()
                     for _ in range(obs.shape[0])
                 ])
-            else:
-                return self.env.action_space.sample()
-        else:
-            if self.num_envs > 1:
-                obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
-                with torch.no_grad():
-                    q_values = self.policy_net(obs_tensor)
-                if self.num_envs > 1:
-                    return q_values.argmax(dim=1).cpu().numpy()
-            else:
-                obs_tensor = torch.tensor(obs, dtype = torch.float32, device=self.device).unsqueeze(0)
-                with torch.no_grad():
-                    q_values = self.policy_net(obs_tensor)
-                return q_values.argmax(dim=1).item()
+            return self.env.action_space.sample()
+
+        obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
+
+        if self.num_envs == 1:
+            obs_tensor = obs_tensor.unsqueeze(0)
+
+        with torch.no_grad():
+            q_values = self.policy_net(obs_tensor)
+
+        actions = q_values.argmax(dim=1)
+
+        if self.num_envs > 1:
+            return actions.cpu().numpy()
+        return actions.item()
     
     def update_epsilon(self):
         if self.action_steps >= self.epsilon_steps:
@@ -135,7 +136,7 @@ class AtariDQN(BaseAlgorithm):
             else:
                 if dones:
                     episode_rewards[0] = 0.0
-                    self.env.reset()
+                    obs, _ = self.env.reset()
             if callback and self.action_steps - last_save_step >= self.save_every:
                 callback()
                 last_save_step = self.action_steps

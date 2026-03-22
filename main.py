@@ -29,9 +29,10 @@ def main():
         config = load_config(args.config)
         runner = TrainRunner(config)
         runner.train()
-        
     elif args.mode == "eval":
         print("Evaluating model")
+        runner = EvalRunner.load_checkpoint(args.checkpoint)
+        result = runner.evaluate(args.episodes)
     elif args.mode == "resume":
         print("resuming form checkpoint")
         runner = TrainRunner.load_checkpoint(args.checkpoint)
