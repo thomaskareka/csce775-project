@@ -1,29 +1,39 @@
 import random, torch
 import numpy as np
-from collections import deque
 
 class ReplayBuffer:
-    def __init__(self, capacity: int):
-        self.buffer = deque(maxlen=capacity)
+    def __init__(self, capacity: int, state_shape):
+        self.capacity = capacity
+        self.ptr = 0
+        self.size = 0
+
+        self.states = np.zeros((capacity, *state_shape), dtype=np.uint8)
+        self.next_states = np.zeros((capacity, *state_shape), dtype=np.uint8)
+        self.actions = np.zeros((capacity,), dtype=np.int64)
+        self.rewards = np.zeros((capacity,), dtype=np.float32)
+        self.dones = np.zeros((capacity,), dtype=np.float32)
     
-    def add(self, state, action, reward, next_state, terminal):
-        self.buffer.append((
-            state.astype(np.uint8, copy=False),
-            action, reward,
-            next_state.astype(np.uint8, copy=False),
-            terminal
-        ))
+    def add(self, state, action, reward, next_state, done):
+        self.states[self.ptr] = state
+        self.next_states[self.ptr] = next_state
+        self.actions[self.ptr] = action
+        self.rewards[self.ptr] = reward
+        self.dones[self.ptr] = done
+
+        self.ptr = (self.ptr + 1) % self.capacity
+        self.size = min(self.size + 1, self.capacity)
     
     def sample(self, batch_size, device):
-        batch = random.sample(self.buffer, batch_size)
-        states, actions, rewards, next_states, terminals = zip(*batch)
-        return (
-            torch.tensor(np.stack(states), dtype=torch.float32, device=device),
-            torch.tensor(actions, dtype=torch.long, device=device),
-            torch.tensor(rewards, dtype=torch.float32, device=device),
-            torch.tensor(np.stack(next_states), dtype=torch.float32, device=device),
-            torch.tensor(terminals, dtype=torch.float32, device=device)
-        )
-    
+        indexes = np.random.randint(0, self.size, size=batch_size)
+
+        states = torch.from_numpy(self.states[indexes]).to(device, dtype=torch.float32, non_blocking=True)
+        next_states = torch.from_numpy(self.next_states[indexes]).to(device, dtype=torch.float32, non_blocking=True)
+
+        actions = torch.from_numpy(self.actions[indexes]).to(device)
+        rewards = torch.from_numpy(self.rewards[indexes]).to(device)
+        dones = torch.from_numpy(self.dones[indexes]).to(device)
+
+        return states, actions, rewards, next_states, dones
+
     def __len__(self):
-        return len(self.buffer)
+        return self.size

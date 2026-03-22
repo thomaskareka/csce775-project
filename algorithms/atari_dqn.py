@@ -41,7 +41,7 @@ class AtariDQN(BaseAlgorithm):
         self.action_steps = 0
         self.param_updates = 0
         
-        self.replay_buffer = ReplayBuffer(self.buffer_size)
+        self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
 
         self.policy_net = self.model
         self.target_net = copy.deepcopy(self.model).to(self.device)

@@ -64,6 +64,7 @@ class TrainRunner:
         checkpoint = torch.load(checkpoint_path, weights_only=False)
 
         config = checkpoint["config"]
+        print(config)
         runner = cls(config)
 
         runner.model.load_state_dict(checkpoint["model_state"])
