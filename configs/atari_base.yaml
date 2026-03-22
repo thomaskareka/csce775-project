@@ -9,13 +9,14 @@ model:
 # 50 million total frames, 12.5 million action steps, 3 mil gradient steps
 # all values here are converted to action steps
 training:
+  num_envs: 16
   total_steps: 12500000
   lr: 0.00025
   gamma: 0.99
 
   batch_size: 32
   #shrunk due to memory limitations
-  buffer_size: 200000
+  buffer_size: 500000
 
   epsilon_start: 1.0
   epsilon_min: 0.1

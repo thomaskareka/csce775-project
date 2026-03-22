@@ -27,10 +27,8 @@ class TrainRunner:
 
         self.exp_dir = self._create_experiment_directory()
 
-        self.env = make_env(config["env"], seed=self.seed)
-
-        self.env = build_observation_pipeline(self.env, self.config)
-        self.env = build_reward_pipeline(self.env, self.config)
+        self.env_count = config["training"].get("num_envs", 1)
+        self.env = make_env(config, num_envs=self.env_count, seed=self.seed)
 
         self._predect_model_size()
 
@@ -72,11 +70,14 @@ class TrainRunner:
 
         return runner
 
-
 #TODO: make this better
     def _predect_model_size(self):
-        obs_shape = self.env.observation_space.shape
-        action_space = self.env.action_space
+        if self.env_count > 1:
+            obs_shape = self.env.single_observation_space.shape
+            action_space = self.env.single_action_space
+        else:
+            obs_shape = self.env.observation_space.shape
+            action_space = self.env.action_space
         print(obs_shape, action_space)
 
         model_cfg = self.config["model"]

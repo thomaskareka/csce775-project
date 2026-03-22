@@ -40,8 +40,11 @@ class AtariDQN(BaseAlgorithm):
         self.emulator_frames = 0
         self.action_steps = 0
         self.param_updates = 0
-        
-        self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
+        self.num_envs = config["num_envs"]
+        if self.num_envs > 1:
+            self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.single_observation_space.shape)
+        else:
+            self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
 
         self.policy_net = self.model
         self.target_net = copy.deepcopy(self.model).to(self.device)
@@ -58,12 +61,25 @@ class AtariDQN(BaseAlgorithm):
 
     def choose_action(self, obs):
         if random.random() < self.epsilon:
-            return self.env.action_space.sample()
+            if self.num_envs > 1:
+                return np.array([
+                    self.env.single_action_space.sample()
+                    for _ in range(obs.shape[0])
+                ])
+            else:
+                return self.env.action_space.sample()
         else:
-            obs_tensor = torch.tensor(obs, dtype = torch.float32, device=self.device).unsqueeze(0)
-            with torch.no_grad():
-                q_values = self.policy_net(obs_tensor)
-            return q_values.argmax(dim=1).item()
+            if self.num_envs > 1:
+                obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
+                with torch.no_grad():
+                    q_values = self.policy_net(obs_tensor)
+                if self.num_envs > 1:
+                    return q_values.argmax(dim=1).cpu().numpy()
+            else:
+                obs_tensor = torch.tensor(obs, dtype = torch.float32, device=self.device).unsqueeze(0)
+                with torch.no_grad():
+                    q_values = self.policy_net(obs_tensor)
+                return q_values.argmax(dim=1).item()
     
     def update_epsilon(self):
         if self.action_steps >= self.epsilon_steps:
@@ -73,47 +89,58 @@ class AtariDQN(BaseAlgorithm):
 
     def train(self, total_steps, callback):
         obs, _ = self.env.reset()
+        episode_rewards = np.zeros(self.num_envs)
 
-        episode_reward = 0.0
         pbar = tqdm(total=total_steps, desc="training", unit="step")
         pbar.update(self.action_steps)
         start_time = time.time()
         last_time = start_time
         last_steps = 0
+        last_save_step = 0
         loss = None
+        # fix to prevent doing thousands of training steps as the first step
+        self.param_updates = self.replay_start_size // self.action_repeat
 
         while self.action_steps < total_steps:
             self.epsilon = self.update_epsilon()
-            action = self.choose_action(obs)
+            actions = self.choose_action(obs)
 
-            next_obs, reward, terminated, truncated, info = self.env.step(action)
-            done = terminated or truncated
+            next_obs, rewards, terminated, truncated, info = self.env.step(actions)
+            dones = np.logical_or(terminated, truncated)
 
             #paper clips to [-1,1]
-            clipped_reward = float(np.sign(reward))
+            clipped_rewards = np.sign(rewards).astype(np.float32)
 
-            self.replay_buffer.add(obs, action, clipped_reward, next_obs, done)
+            self.replay_buffer.add_batch(obs, actions, clipped_rewards, next_obs, dones)
 
             obs = next_obs
-            episode_reward += reward
-            self.action_steps += 1
-            self.emulator_frames += self.action_repeat
+            episode_rewards += rewards
+            self.action_steps += self.num_envs
+            self.emulator_frames += self.action_repeat * self.num_envs
 
-            if self.emulator_frames >= self.replay_start_size and self.action_steps % self.grad_update_freq == 0:
-                loss = self.train_step()
+            if self.emulator_frames >= self.replay_start_size:
+                desired_updates = self.action_steps // self.grad_update_freq
+                updates_to_run = desired_updates - self.param_updates
+                for _ in range(max(0, updates_to_run)):
+                    loss = self.train_step()
 
-                if self.param_updates > 0 and self.param_updates % self.update_target_steps == 0:
-                    self.update_target()
-            
-            if done:
-                # print(f"reward: {episode_reward} frames: {self.emulator_frames} steps: {self.action_steps}")
-                obs, info = self.env.reset()
-                episode_reward = 0.0
-            
-            if callback and self.action_steps % self.save_every == 0:
+                    if self.param_updates > 0 and self.param_updates % self.update_target_steps == 0:
+                        self.update_target()
+
+            if self.config["num_envs"] > 1:
+                for i, done in enumerate(dones):
+                    # print(f"reward: {episode_reward} frames: {self.emulator_frames} steps: {self.action_steps}")
+                    if done:
+                        episode_rewards[i] = 0.0
+            else:
+                if dones:
+                    episode_rewards[0] = 0.0
+                    self.env.reset()
+            if callback and self.action_steps - last_save_step >= self.save_every:
                 callback()
+                last_save_step = self.action_steps
             
-            pbar.update(1)
+            pbar.update(self.num_envs)
             now = time.time()
             dt = now - last_time
             if dt > 1.0:

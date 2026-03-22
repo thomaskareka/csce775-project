@@ -1,7 +1,7 @@
 import stable_retro
 
 class BaseAlgorithm:
-    def __init__(self, model, env: stable_retro.RetroEnv, device, config):
+    def __init__(self, model, env, device, config):
         self.model = model
         self.env = env
         self.device = device

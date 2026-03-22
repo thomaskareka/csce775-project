@@ -8,7 +8,6 @@ def register_observation(name):
 
 def build_observation_pipeline(env, config):
     pipeline = config.get("observation", {}).get("pipeline", [])
-    print(pipeline)
     for step in pipeline:
         name = step["name"]
         params = {k: v for k, v in step.items() if k != "name"}

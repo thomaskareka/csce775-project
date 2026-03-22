@@ -22,6 +22,19 @@ class ReplayBuffer:
 
         self.ptr = (self.ptr + 1) % self.capacity
         self.size = min(self.size + 1, self.capacity)
+
+    def add_batch(self, states, actions, rewards, next_states, dones):
+        n = len(states)
+        indexes = (self.ptr + np.arange(n)) % self.capacity
+
+        self.states[indexes] = states
+        self.next_states[indexes] = next_states
+        self.actions[indexes] = actions
+        self.rewards[indexes] = rewards
+        self.dones[indexes] = dones
+
+        self.ptr = (self.ptr + n) % self.capacity
+        self.size = min(self.size + n, self.capacity)
     
     def sample(self, batch_size, device):
         indexes = np.random.randint(0, self.size, size=batch_size)
