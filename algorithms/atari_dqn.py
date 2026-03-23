@@ -46,7 +46,7 @@ class AtariDQN(BaseAlgorithm):
         else:
             self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
 
-        self.policy_net = self.model
+        self.policy_net = self.model.to(self.device)
         self.target_net = copy.deepcopy(self.model).to(self.device)
         self.target_net.eval()
         
@@ -60,27 +60,28 @@ class AtariDQN(BaseAlgorithm):
     
 
     def choose_action(self, obs):
-        if random.random() < self.epsilon:
-            if self.num_envs > 1:
-                return np.array([
-                    self.env.single_action_space.sample()
-                    for _ in range(obs.shape[0])
-                ])
-            return self.env.action_space.sample()
-
-        obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
+        obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device) / 255.0
 
         if self.num_envs == 1:
             obs_tensor = obs_tensor.unsqueeze(0)
 
         with torch.no_grad():
             q_values = self.policy_net(obs_tensor)
-
-        actions = q_values.argmax(dim=1)
+        greedy_actions = q_values.argmax(dim=1).cpu().numpy()
 
         if self.num_envs > 1:
-            return actions.cpu().numpy()
-        return actions.item()
+            actions = greedy_actions.copy()
+            explore_mask = np.random.rand(self.num_envs) < self.epsilon
+            random_actions = np.array([
+                self.env.single_action_space.sample()
+                for _ in range(self.num_envs)
+            ])
+            actions[explore_mask] = random_actions[explore_mask]
+            return actions
+
+        if random.random() < self.epsilon:
+            return self.env.action_space.sample()
+        return int(greedy_actions[0])
     
     def update_epsilon(self):
         if self.action_steps >= self.epsilon_steps:
@@ -99,8 +100,6 @@ class AtariDQN(BaseAlgorithm):
         last_steps = 0
         last_save_step = 0
         loss = None
-        # fix to prevent doing thousands of training steps as the first step
-        self.param_updates = self.replay_start_size // self.action_repeat
 
         while self.action_steps < total_steps:
             self.epsilon = self.update_epsilon()
@@ -110,7 +109,7 @@ class AtariDQN(BaseAlgorithm):
             dones = np.logical_or(terminated, truncated)
 
             #paper clips to [-1,1]
-            clipped_rewards = np.sign(rewards).astype(np.float32)
+            clipped_rewards = np.asarray(np.sign(rewards), dtype=np.float32)
 
             self.replay_buffer.add_batch(obs, actions, clipped_rewards, next_obs, dones)
 
@@ -162,11 +161,11 @@ class AtariDQN(BaseAlgorithm):
         
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size, self.device)
 
-        q_values = self.policy_net(states)
+        q_values = self.policy_net(states / 255.0)
         q_sa = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
 
         with torch.no_grad():
-            next_q_values = self.target_net(next_states)
+            next_q_values = self.target_net(next_states / 255.0)
             max_next_q = next_q_values.max(dim=1).values
             target = rewards + self.gamma * max_next_q * (1.0 - dones)
         
