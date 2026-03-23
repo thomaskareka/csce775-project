@@ -31,8 +31,7 @@ class AtariCNN(nn.Module):
     def forward(self, x):
         if x.dtype != torch.float32:
             x = x.float()
-        
-        x = x / 255.0 #normalize
+            
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))

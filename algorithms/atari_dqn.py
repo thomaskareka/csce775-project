@@ -68,7 +68,6 @@ class AtariDQN(BaseAlgorithm):
         with torch.no_grad():
             q_values = self.policy_net(obs_tensor)
         greedy_actions = q_values.argmax(dim=1).cpu().numpy()
-
         if self.num_envs > 1:
             actions = greedy_actions.copy()
             explore_mask = np.random.rand(self.num_envs) < self.epsilon
