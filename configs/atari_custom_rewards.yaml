@@ -51,8 +51,12 @@ reward:
   - name: death_penalty
     penalty: -1
   - name: survival
-    value: -0.1
+    value: -0.05
   - name: earn_score
     weight: 0.02
+    #flat bonus
   - name: screen_scroll
-    weight: 0.5
+    weight: 0.1
+    #based on speed
+  - name: screen_scroll_amount
+    weight: 0.05
