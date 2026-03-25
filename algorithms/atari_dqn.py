@@ -108,7 +108,7 @@ class AtariDQN(BaseAlgorithm):
             dones = np.logical_or(terminated, truncated)
 
             #paper clips to [-1,1]
-            clipped_rewards = np.asarray(np.sign(rewards), dtype=np.float32)
+            clipped_rewards = np.clip(rewards, -1, 1)
 
             self.replay_buffer.add_batch(obs, actions, clipped_rewards, next_obs, dones)
 
