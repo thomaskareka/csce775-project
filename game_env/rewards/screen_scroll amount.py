@@ -11,5 +11,4 @@ class ScreenScrollReward(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         scrolling = info.get('scrolling', 0)
         r = (scrolling - 16) * self.value
-        print(r)
         return obs, reward, terminated, truncated, info
