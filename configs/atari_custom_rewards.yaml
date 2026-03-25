@@ -48,7 +48,7 @@ observation:
 reward:
   pipeline:
   - name: reset
-  - name: death_penalty
+  - name: ram_death_penalty
     penalty: -1
   - name: survival
     value: -0.05
