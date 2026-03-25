@@ -21,7 +21,7 @@ training:
   epsilon_start: 1.0
   epsilon_min: 0.1
   #1m frames
-  epsilon_steps: 250000
+  epsilon_steps: 4000000
 
   grad_momentum: 0.95
   squared_momentum: 0.95
@@ -51,12 +51,10 @@ reward:
   - name: ram_death_penalty
     penalty: -1
   - name: survival
-    value: -0.05
+    value: -0.01
   - name: earn_score
-    weight: 0.02
-    #flat bonus
-  - name: screen_scroll
-    weight: 0.1
-    #based on speed
-  - name: screen_scroll_amount
-    weight: 0.05
+    weight: 0.01
+  - name: player_position
+    weight: 0.015
+  - name: new_screen
+    value: 0.5

@@ -1,6 +1,6 @@
 import torch
 from pathlib import Path
-from datetime import datetime
+import time
 import numpy as np
 
 from game_env.mario_env import make_env
@@ -22,6 +22,7 @@ class EvalRunner:
         self.config["model"] = infer_model_config(self.config, self.env, self.num_envs)
 
         self.model, self.algorithm = build_runner(self.config, self.env, self.device)
+        self.algorithm.epsilon = 0.0 # no exploration during evaluation
     
 
     @classmethod

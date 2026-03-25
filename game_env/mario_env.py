@@ -14,8 +14,9 @@ def make_single_env(config: dict, rank:int, seed:int = 1, force_render = False) 
         env = stable_retro.make(**kwargs, use_restricted_actions = stable_retro.Actions.DISCRETE)
         env.reset(seed=seed + rank)
 
-        env = build_observation_pipeline(env, config)
+        #reward must be built first to ensure reward info is available for action repeat
         env = build_reward_pipeline(env, config)
+        env = build_observation_pipeline(env, config)
 
         return env
     return _init
