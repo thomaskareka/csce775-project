@@ -99,14 +99,18 @@ class AtariDQN(BaseAlgorithm):
         last_steps = 0
         last_save_step = 0
         loss = None
+        train_t0, train_t1 = 0.0, 0.0
 
         while self.action_steps < total_steps:
+            t0 = time.time()
             self.epsilon = self.update_epsilon()
             actions = self.choose_action(obs)
+            t1 = time.time()
 
             next_obs, rewards, terminated, truncated, info = self.env.step(actions)
+            t2 = time.time()
             dones = np.logical_or(terminated, truncated)
-
+            t3 = time.time()
             #paper clips to [-1,1]
             clipped_rewards = np.clip(rewards, -1, 1)
 
@@ -120,11 +124,13 @@ class AtariDQN(BaseAlgorithm):
             if self.emulator_frames >= self.replay_start_size:
                 desired_updates = self.action_steps // self.grad_update_freq
                 updates_to_run = desired_updates - self.param_updates
+                train_t0 = time.time()
                 for _ in range(max(0, updates_to_run)):
                     loss = self.train_step()
 
                     if self.param_updates > 0 and self.param_updates % self.update_target_steps == 0:
                         self.update_target()
+                train_t1 = time.time()
 
             if self.config["num_envs"] > 1:
                 for i, done in enumerate(dones):
@@ -149,6 +155,9 @@ class AtariDQN(BaseAlgorithm):
                     "epsilon": f"{self.epsilon:.3f}",
                     "loss": f"{loss:.4f}" if loss else "—",
                     "buf": len(self.replay_buffer),
+                    "choose": f"{(t1 - t0)*1000:.1f}ms",
+                    "env": f"{(t2 - t1)*1000:.1f}ms",
+                    "train": f"{(train_t1 - train_t0)*1000:.1f}ms",
                 })
                 last_time = now
                 last_steps = self.action_steps

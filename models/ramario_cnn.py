@@ -1,0 +1,32 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from models import register_model
+
+@register_model("ramario_cnn")
+class RAMarioCNN(nn.Module):
+    def __init__(self, input_shape, num_actions, action_type):
+        super().__init__()
+        c, h, w = input_shape
+
+        self.conv1 = nn.Conv2d(c, 32, kernel_size=3, stride=1)
+
+        self.conv_output_size = self._get_conv_output(input_shape)
+        self.fc1 = nn.Linear(self.conv_output_size, num_actions)
+
+    # dynamic output calculation, rather than assuming 84x84
+    def _get_conv_output(self, shape):
+        with torch.no_grad():
+            x = torch.zeros(1, *shape)
+            x = F.relu(self.conv1(x))
+            output = x.view(1, -1).size(1)
+            print(output)
+            return output
+    
+    def forward(self, x):
+        if x.dtype != torch.float32:
+            x = x.float()
+
+        x = F.relu(self.conv1(x))
+        x = x.view(x.size(0), -1)
+        return self.fc1(x)

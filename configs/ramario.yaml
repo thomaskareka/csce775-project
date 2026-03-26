@@ -1,0 +1,51 @@
+# using same hyperparameters as the atari paper
+algorithm: ramario
+
+env:
+  game: "SuperMarioBros-Nes-v0"
+  render_mode: none
+
+model:
+  type: ramario_cnn
+
+training:
+# can't parallelize this, deterministic choices so it chooses the same actions across *every* env
+  num_envs: 1
+
+  epsilon_start: 0.0
+  epsilon_min: 0.0
+  epsilon_steps: 0
+
+  total_steps: 10
+  episodes_per_task: 10
+  num_grad_steps: 10
+  lr: 0.001
+  inner_lr: 0.1
+
+  save_every: 1
+
+
+observation:
+  pipeline:
+  - name: resize
+    width: 84
+    height: 84
+  - name: grayscale
+  - name: frame_buffer
+    count: 4
+  - name: action_repeat
+    count: 4
+
+reward:
+  pipeline:
+  - name: reset
+  - name: ram_death_penalty
+    penalty: -0.4
+  - name: survival
+    value: -0.01
+  - name: earn_score
+    weight: 0.01
+  - name: player_position
+    weight: 0.015
+  - name: new_screen
+    weight: 0.5

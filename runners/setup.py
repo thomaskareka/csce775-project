@@ -43,7 +43,7 @@ def infer_model_config(config, env, num_envs):
         
         if model_cfg["type"] == "simple_linear":
             model_cfg["input_dim"] = h * w * c
-        elif model_cfg["type"] == "atari_cnn":
+        elif model_cfg["type"] == "atari_cnn" or model_cfg["type"] == "ramario_cnn":
             model_cfg["input_shape"] = obs_shape
         else:
             model_cfg["height"] = h

@@ -52,7 +52,7 @@ class EvalRunner:
                 obs, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
 
-                total_reward += np.sign(reward).astype(np.float32)
+                total_reward += np.clip(reward, -1, 1)
                 length += 1
             episode_rewards.append(total_reward)
             episode_lengths.append(length)

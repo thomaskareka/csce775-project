@@ -49,7 +49,7 @@ reward:
   pipeline:
   - name: reset
   - name: ram_death_penalty
-    penalty: -1
+    penalty: -0.5
   - name: survival
     value: -0.01
   - name: earn_score
@@ -57,4 +57,4 @@ reward:
   - name: player_position
     weight: 0.015
   - name: new_screen
-    value: 0.5
+    weight: 0.5
