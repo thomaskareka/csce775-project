@@ -27,25 +27,25 @@ training:
 
 observation:
   pipeline:
+  - name: action_repeat
+    count: 4
   - name: resize
     width: 84
     height: 84
   - name: grayscale
   - name: frame_buffer
     count: 4
-  - name: action_repeat
-    count: 4
 
 reward:
   pipeline:
   - name: reset
   - name: ram_death_penalty
-    penalty: -0.4
+    penalty: -1.0
   - name: survival
     value: -0.01
   - name: earn_score
-    weight: 0.01
+    weight: 0.02
   - name: player_position
-    weight: 0.015
+    weight: 0.025
   - name: new_screen
     weight: 0.5

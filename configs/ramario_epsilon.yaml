@@ -12,7 +12,7 @@ training:
   num_envs: 16
 
   epsilon_start: 1.0
-  epsilon_min: 0.05
+  epsilon_min: 0.1
   epsilon_steps: 8
 
   total_steps: 10
@@ -21,22 +21,31 @@ training:
   lr: 0.001
   inner_lr: 0.1
 
-  save_every: 1
+  save_every: 10
 
 
 observation:
   pipeline:
+  - name: action_repeat
+    count: 4
   - name: resize
     width: 84
     height: 84
   - name: grayscale
   - name: frame_buffer
     count: 4
-  - name: action_repeat
-    count: 4
+
 
 reward:
   pipeline:
   - name: reset
+  - name: ram_death_penalty
+    penalty: -10.0
+  - name: survival
+    value: -0.01
+  - name: earn_score
+    weight: 0.02
   - name: player_position
-    weight: 0.015
+    weight: 0.025
+  - name: new_screen
+    weight: 0.5

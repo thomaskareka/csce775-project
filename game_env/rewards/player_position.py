@@ -12,7 +12,15 @@ class PlayerPositionReward(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         ram = self.env.unwrapped.get_ram()
         pos = (int(ram[0x006D]) << 8 | int(ram[0x0086]))
-        if pos > self.last_pos:
-            reward += self.value * (pos - self.last_pos)
+        delta = min(pos - self.last_pos, 5)
+        if pos > self.last_pos and self.last_pos != 0 and self.max_pos < pos:
+            reward += self.value * delta
         self.last_pos = pos
+        if pos > self.max_pos:
+            self.max_pos = pos
         return obs, reward, terminated, truncated, info
+    
+    def reset(self, **kwargs):
+        self.last_pos = 0
+        self.max_pos = 0
+        return self.env.reset(**kwargs)
