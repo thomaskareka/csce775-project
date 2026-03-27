@@ -49,12 +49,12 @@ reward:
   pipeline:
   - name: reset
   - name: ram_death_penalty
-    penalty: -10.0
+    penalty: -1
   - name: survival
-    value: -0.01
+    value: -0.05
   - name: earn_score
     weight: 0.02
-  - name: player_position
-    weight: 0.025
-  - name: new_screen
-    weight: 0.5
+  - name: screen_scroll
+    weight: 0.1
+  - name: screen_scroll_amount
+    weight: 0.05

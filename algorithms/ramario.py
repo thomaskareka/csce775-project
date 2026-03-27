@@ -1,10 +1,12 @@
 import copy, torch, time, random
+from torch.distributions import Categorical
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 
 from algorithms import register_algorithm
 from algorithms.base import BaseAlgorithm
+from utils.replay_buffer import ReplayBuffer
 
 
 @register_algorithm("ramario")
@@ -16,16 +18,17 @@ class Reptile(BaseAlgorithm):
         self.num_grad_steps = config["num_grad_steps"]
         self.inner_lr = config["inner_lr"]
         self.lr = config["lr"]
+        self.gamma = config["gamma"]
+
+        self.batch_size = config["batch_size"]
+        self.buffer_size = config["buffer_size"]
 
         self.model = self.model.to(self.device)
 
-        self.epsilon_start = config["epsilon_start"]
-        self.epsilon = self.epsilon_start
-        self.min_epsilon = config["epsilon_min"]
-        self.epsilon_steps = config["epsilon_steps"]
-
         self.save_every = config["save_every"]
         self.num_envs = config["num_envs"]
+
+        self.replay_buffer = self.make_buffer()
 
         self.tasks_done = 0
         self.action_steps = 0
@@ -35,6 +38,12 @@ class Reptile(BaseAlgorithm):
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.task_optimizer = torch.optim.SGD(self.model.parameters(), lr=self.inner_lr)
 
+    def make_buffer(self):
+        if self.num_envs > 1:
+            return ReplayBuffer(self.buffer_size, self.env.single_observation_space.shape)
+        else:
+            return ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
+
     def choose_action(self, obs, model = None):
         if model is None:
             model = self.model
@@ -42,83 +51,122 @@ class Reptile(BaseAlgorithm):
 
         if self.num_envs == 1:
             obs_tensor = obs_tensor.unsqueeze(0)
-
+        
         with torch.no_grad():
-            q_values = model(obs_tensor)
-        greedy_actions = q_values.argmax(dim=1).cpu().numpy()
+            logits = model(obs_tensor)
+            dist = Categorical(logits=logits)
+            action = dist.sample()
+        
         if self.num_envs > 1:
-            actions = greedy_actions.copy()
-            explore_mask = np.random.rand(self.num_envs) < self.epsilon
-            random_actions = np.array([
-                self.env.single_action_space.sample()
-                for _ in range(self.num_envs)
-            ])
-            actions[explore_mask] = random_actions[explore_mask]
-            return actions
-
-        if random.random() < self.epsilon:
-            return self.env.action_space.sample()
-        return int(greedy_actions[0])
+            return action.cpu().numpy()
+        else:
+            return int(action.item())
     
-    def update_epsilon(self):
-        if self.action_steps >= self.epsilon_steps:
-            return self.min_epsilon
-        fraction = self.action_steps / self.epsilon_steps
-        return 1.0 + fraction * (self.min_epsilon - 1)
+    def replay_buffer_update(self, task_model):
+        if len(self.replay_buffer) < self.batch_size:
+            return None
+        last_loss = None
+        for _ in range(self.num_grad_steps):
+            states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size, self.device)
 
+            states = states / 255.0
+            next_states = next_states / 255.0
+            actions = actions.view(-1)
+            rewards = rewards.view(-1)
+            dones = dones.view(-1)
+
+            logits = task_model(states)
+            dist = Categorical(logits=logits)
+            log_probs = dist.log_prob(actions)
+            f_sa = logits.gather(1, actions.unsqueeze(1)).squeeze(1)
+
+            with torch.no_grad():
+                next_logits = task_model(next_states)
+                next_f_sa = next_logits.max(dim=1).values
+                target = rewards + self.gamma * (1.0 - dones) * next_f_sa - f_sa
+            
+            loss = -(log_probs * target.detach()).mean()
+
+            self.task_optimizer.zero_grad()
+            loss.backward()
+            self.task_optimizer.step()
+
+            last_loss = loss.item()
+        return last_loss
+    
+    def update_policy_gradient(self, task_model, obs, actions, rewards):
+        if len(obs) == 0:
+            return None
+        
+        obs_tensor = torch.as_tensor(np.asarray(obs), dtype=torch.float32, device=self.device) / 255.0
+        actions_tensor = torch.as_tensor(np.asarray(actions), dtype=torch.long, device=self.device).view(-1)
+        returns_tensor = self.calculate_returns(rewards)
+
+        logits = task_model(obs_tensor)
+        dist = Categorical(logits=logits)
+        log_probs = dist.log_prob(actions_tensor)
+        loss = -(log_probs * returns_tensor.detach()).mean()
+
+        self.task_optimizer.zero_grad()
+        loss.backward()
+        self.task_optimizer.step()
+
+        return loss.item()
+        
+        
     def reptile_update(self, task_model):
         with torch.no_grad():
             for param, task_param in zip(self.model.parameters(), task_model.parameters()):
                 param.data.add_(self.lr * (task_param.data - param.data))
-
         self.param_updates += 1
+    
+    def calculate_returns(self, rewards):
+        returns = []
+        G = 0.0
+        for r in reversed(rewards):
+            G = r + self.gamma * G
+            returns.append(G)
+        returns.reverse()
 
-    def train_step(self, task_model, obs, actions, rewards):
-        task_optimizer = self.task_optimizer
+        returns = torch.tensor(returns, dtype=torch.float32, device=self.device)
 
-        obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=self.device) / 255.0
-        if self.num_envs == 1:
-            obs_tensor = obs_tensor.unsqueeze(0)
-
-        actions_tensor = torch.as_tensor(actions, dtype=torch.long, device=self.device).view(-1)
-        rewards_tensor = torch.as_tensor(rewards, dtype=torch.float32, device=self.device).view(-1)
-
-        loss = None
-        for _ in range(self.num_grad_steps):
-            q_values = task_model(obs_tensor)
-            action_q_values = q_values.gather(1, actions_tensor.unsqueeze(1)).squeeze(1)
-
-            loss = F.mse_loss(action_q_values, rewards_tensor)
-
-            task_optimizer.zero_grad()
-            loss.backward()
-            task_optimizer.step()
-
-        return loss.item() if loss is not None else None
+        #normalization for stability
+        if len(returns) > 1:
+            returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+        
+        return returns
 
     def train(self, total_tasks, callback):
         self.model.train()
         obs, _ = self.env.reset()
 
-        episode_rewards = np.zeros(self.num_envs, dtype=np.float32)
         pbar = tqdm(total=total_tasks, desc="training", unit="task")
         pbar.update(self.tasks_done)
 
         last_time = time.time()
         last_action_steps = self.action_steps
         last_save_step = self.tasks_done
-        loss = None
-        task_model = copy.deepcopy(self.model).to(self.device)
 
+        task_model = copy.deepcopy(self.model).to(self.device)
+        replay_buffer_loss = None
+        policy_gradient_loss = None
         reptile_t0, reptile_t1 = 0.0, 0.0
 
         while self.tasks_done < total_tasks:
-            self.epsilon = self.update_epsilon()
-
             task_model.load_state_dict(self.model.state_dict())
             self.task_optimizer = torch.optim.SGD(task_model.parameters(), lr=self.inner_lr)
 
+            self.replay_buffer = self.make_buffer() #reset each task
+
             completed_episodes = 0
+            if self.num_envs > 1:
+                trajectory_obs = [[] for _ in range(self.num_envs)]
+                trajectory_actions = [[] for _ in range(self.num_envs)]
+                trajectory_rewards = [[] for _ in range(self.num_envs)]
+            else:
+                trajectory_obs = []
+                trajectory_actions = []
+                trajectory_rewards = []
 
             while completed_episodes < self.episodes_per_task:
                 step_t0 = time.time()
@@ -132,37 +180,69 @@ class Reptile(BaseAlgorithm):
                     rewards_batch = np.asarray(rewards, dtype=np.float32)
                     dones = np.logical_or(terminated, truncated)
                     done_count = int(dones.sum())
-                    obs_batch = obs
-                    actions_batch = actions
+
+                    self.replay_buffer.add_batch(obs, actions, rewards_batch, next_obs, dones)
+                    for i in range(self.num_envs):
+                        trajectory_obs[i].append(obs[i])
+                        trajectory_actions[i].append(actions[i])
+                        trajectory_rewards[i].append(rewards[i])
+
+                        if dones[i]:
+                            policy_gradient_loss = self.update_policy_gradient(
+                                task_model,
+                                trajectory_obs[i],
+                                trajectory_actions[i],
+                                trajectory_rewards[i],
+                            )
+                            if policy_gradient_loss is not None:
+                                policy_gradient_loss = float(policy_gradient_loss)
+
+                            trajectory_obs[i] = []
+                            trajectory_actions[i] = []
+                            trajectory_rewards[i] = []
                 else:
                     rewards_batch = np.array([rewards], dtype=np.float32)
                     dones = np.array([terminated or truncated], dtype=bool)
                     done_count = int(dones[0])
-                    obs_batch = obs
-                    actions_batch = np.array([actions])
 
-                    if dones: self.env.reset()
+                    self.replay_buffer.add(np.asarray(obs), actions, rewards_batch[0], np.asarray(next_obs), dones[0])
 
-                loss = self.train_step(task_model, obs_batch, actions_batch, rewards_batch)
+                    trajectory_obs.append(obs)
+                    trajectory_actions.append(actions)
+                    trajectory_rewards.append(rewards)
+
+                    if dones[0]:
+                        policy_gradient_loss = self.update_policy_gradient(
+                            task_model,
+                            trajectory_obs,
+                            trajectory_actions,
+                            trajectory_rewards,
+                        )
+                        if policy_gradient_loss is not None:
+                            policy_gradient_loss = float(policy_gradient_loss)
+
+                        trajectory_obs = []
+                        trajectory_actions = []
+                        trajectory_rewards = []
+                    
+                replay_buffer_loss = self.replay_buffer_update(task_model)
                 step_t3 = time.time()
-                episode_rewards += rewards_batch
+
                 completed_episodes += done_count
                 self.episodes_done += done_count
                 self.action_steps += self.num_envs
 
-                for i, done in enumerate(dones):
-                    if done:
-                        episode_rewards[i] = 0.0
-
-                obs = next_obs
+                if self.num_envs == 1 and dones[0]:
+                    obs, _ = self.env.reset()
+                else:
+                    obs = next_obs
 
                 now = time.time()
                 dt = now - last_time
                 if dt > 1.0:
-                    aps = (self.action_steps - last_action_steps) / dt
                     pbar.set_postfix({
-                        "actions_per_sec": f"{aps:.1f}",
-                        "loss": f"{loss:.4f}" if loss is not None else "—",
+                        "rb_l": f"{replay_buffer_loss:.4f}" if replay_buffer_loss is not None else "—",
+                        "pg_l": f"{policy_gradient_loss:.4f}" if policy_gradient_loss is not None else "—",
                         "episodes": self.episodes_done,
                         "action_steps": self.action_steps,
                         "choose": f"{(step_t1 - step_t0)*1000:.1f}ms",

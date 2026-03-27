@@ -9,20 +9,19 @@ model:
   type: ramario_cnn
 
 training:
-# can't parallelize this, deterministic choices so it chooses the same actions across *every* env
   num_envs: 1
 
-  epsilon_start: 0.0
-  epsilon_min: 0.0
-  epsilon_steps: 0
+  batch_size: 32
+  buffer_size: 10000
 
   total_steps: 10
   episodes_per_task: 10
   num_grad_steps: 10
   lr: 0.001
   inner_lr: 0.1
+  gamma: 0.99
 
-  save_every: 1
+  save_every: 2
 
 
 observation:

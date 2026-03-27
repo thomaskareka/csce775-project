@@ -11,6 +11,9 @@ model:
 training:
   num_envs: 16
 
+  batch_size: 32
+  buffer_size: 10000
+
   epsilon_start: 1.0
   epsilon_min: 0.1
   epsilon_steps: 8
@@ -20,6 +23,7 @@ training:
   num_grad_steps: 10
   lr: 0.001
   inner_lr: 0.1
+  gamma: 0.99
 
   save_every: 10
 
@@ -40,12 +44,12 @@ reward:
   pipeline:
   - name: reset
   - name: ram_death_penalty
-    penalty: -10.0
+    penalty: -1
   - name: survival
-    value: -0.01
+    value: -0.05
   - name: earn_score
     weight: 0.02
-  - name: player_position
-    weight: 0.025
-  - name: new_screen
-    weight: 0.5
+  - name: screen_scroll
+    weight: 0.1
+  - name: screen_scroll_amount
+    weight: 0.05
