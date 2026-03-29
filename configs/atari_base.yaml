@@ -36,6 +36,7 @@ training:
 
 observation:
   pipeline:
+  - name: limited_action_space
   - name: resize
     width: 84
     height: 84

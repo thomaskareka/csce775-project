@@ -6,7 +6,7 @@ env:
   render_mode: none
 
 model:
-  type: ramario_cnn
+  type: atari_cnn
 
 training:
   num_envs: 16
@@ -18,11 +18,11 @@ training:
   epsilon_min: 0.1
   epsilon_steps: 8
 
-  total_steps: 10
+  total_steps: 100
   episodes_per_task: 10
   num_grad_steps: 10
   lr: 0.001
-  inner_lr: 0.1
+  inner_lr: 0.001
   gamma: 0.99
 
   save_every: 10
@@ -30,6 +30,7 @@ training:
 
 observation:
   pipeline:
+  - name: limited_action_space
   - name: action_repeat
     count: 4
   - name: resize
@@ -45,8 +46,6 @@ reward:
   - name: reset
   - name: ram_death_penalty
     penalty: -1
-  - name: survival
-    value: -0.05
   - name: earn_score
     weight: 0.02
   - name: screen_scroll

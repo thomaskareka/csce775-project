@@ -65,15 +65,18 @@ class Reptile(BaseAlgorithm):
     def replay_buffer_update(self, task_model):
         if len(self.replay_buffer) < self.batch_size:
             return None
+
         last_loss = None
         for _ in range(self.num_grad_steps):
-            states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size, self.device)
+            states, actions, rewards, next_states, dones = self.replay_buffer.sample(
+                self.batch_size, self.device
+            )
 
             states = states / 255.0
             next_states = next_states / 255.0
-            actions = actions.view(-1)
-            rewards = rewards.view(-1)
-            dones = dones.view(-1)
+            actions = actions.long().view(-1)
+            rewards = rewards.float().view(-1)
+            dones = dones.float().view(-1)
 
             logits = task_model(states)
             dist = Categorical(logits=logits)
@@ -84,14 +87,15 @@ class Reptile(BaseAlgorithm):
                 next_logits = task_model(next_states)
                 next_f_sa = next_logits.max(dim=1).values
                 target = rewards + self.gamma * (1.0 - dones) * next_f_sa - f_sa
-            
-            loss = -(log_probs * target.detach()).mean()
+
+            loss = -(log_probs * target).mean()
 
             self.task_optimizer.zero_grad()
             loss.backward()
             self.task_optimizer.step()
 
             last_loss = loss.item()
+
         return last_loss
     
     def update_policy_gradient(self, task_model, obs, actions, rewards):

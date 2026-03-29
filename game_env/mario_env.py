@@ -11,7 +11,7 @@ def make_single_env(config: dict, rank:int, seed:int = 1, force_render = False) 
             env_config["render_mode"] = "human"
         kwargs = {k: v for k, v in env_config.items() if v is not None}
 
-        env = stable_retro.make(**kwargs, use_restricted_actions = stable_retro.Actions.DISCRETE)
+        env = stable_retro.make(**kwargs)
         env.reset(seed=seed + rank)
 
         #reward must be built first to ensure reward info is available for action repeat

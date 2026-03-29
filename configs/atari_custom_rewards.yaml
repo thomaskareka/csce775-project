@@ -36,6 +36,7 @@ training:
 
 observation:
   pipeline:
+  - name: limited_action_space
   - name: action_repeat
     count: 4
   - name: resize
@@ -50,11 +51,9 @@ reward:
   - name: reset
   - name: ram_death_penalty
     penalty: -1
-  - name: survival
-    value: -0.05
   - name: earn_score
     weight: 0.02
   - name: screen_scroll
     weight: 0.1
-  - name: screen_scroll_amount
-    weight: 0.05
+  - name: player_position
+    weight: 0.025
