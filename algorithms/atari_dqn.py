@@ -55,7 +55,8 @@ class AtariDQN(BaseAlgorithm):
             lr=self.lr,
             momentum=self.grad_momentum,
             alpha=self.squared_momentum,
-            eps=self.ms_grad
+            eps=self.ms_grad,
+            centered=True
         )
     
 
@@ -122,6 +123,8 @@ class AtariDQN(BaseAlgorithm):
             self.emulator_frames += self.action_repeat * self.num_envs
 
             if self.emulator_frames >= self.replay_start_size:
+                if self.param_updates == 0:
+                    self.param_updates = self.action_steps // self.grad_update_freq
                 desired_updates = self.action_steps // self.grad_update_freq
                 updates_to_run = desired_updates - self.param_updates
                 train_t0 = time.time()
@@ -142,7 +145,7 @@ class AtariDQN(BaseAlgorithm):
                     episode_rewards[0] = 0.0
                     obs, _ = self.env.reset()
             if callback and self.action_steps - last_save_step >= self.save_every:
-                callback()
+                callback(f"checkpoint_{self.action_steps}.pt")
                 last_save_step = self.action_steps
             
             pbar.update(self.num_envs)

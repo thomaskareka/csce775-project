@@ -22,7 +22,7 @@ training:
   episodes_per_task: 10
   num_grad_steps: 10
   lr: 0.001
-  inner_lr: 0.001
+  inner_lr: 0.1
   gamma: 0.99
 
   save_every: 10
@@ -50,5 +50,7 @@ reward:
     weight: 0.02
   - name: screen_scroll
     weight: 0.1
+  - name: player_position
+    weight: 0.025
   - name: screen_scroll_amount
     weight: 0.05
