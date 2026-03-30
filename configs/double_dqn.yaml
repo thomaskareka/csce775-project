@@ -1,0 +1,48 @@
+algorithm: double_dqn
+
+env:
+  game: "SuperMarioBros-Nes-v0"
+  render_mode: human
+
+model:
+  type: double_dqn
+  hidden_dim: 128
+
+training:
+  total_steps: 1000000
+  lr: !!float 1e-4
+  gamma: 0.99
+
+  batch_size: 64
+  buffer_size: 50000
+
+  epsilon_start: 1.0
+  epsilon_min: 0.1
+  epsilon_steps: 10000
+
+  update_target_steps: 2000
+
+observation:
+  pipeline:
+    - name: action_repeat
+      count: 4
+    - name: resize
+      width: 128
+      height: 64
+    - name: grayscale
+    - name: frame_buffer
+      count: 4
+
+reward:
+  pipeline:
+  - name: reset
+  - name: ram_death_penalty
+    penalty: -0.5
+  - name: survival
+    value: -0.1
+  - name: earn_score
+    weight: 0.03
+  - name: player_position
+    weight: 0.015
+  - name: new_screen
+    weight: 0.5

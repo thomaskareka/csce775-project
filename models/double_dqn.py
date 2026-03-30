@@ -1,0 +1,36 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from models import register_model
+
+@register_model("double_dqn")
+class DoubleDQN(nn.Module):
+    def __init__(self, input_channels, height, width, hidden_dim, num_actions, action_type, **kwargs):
+        super().__init__()
+        input_shape = (input_channels, height, width)
+        c, h, w = input_shape
+
+        self.conv1 = nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
+        self.conv_output_size = self._get_conv_output(input_shape)
+        self.fc1 = nn.Linear(self.conv_output_size, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, num_actions)
+
+    # dynamic output calculation, rather than assuming 84x84
+    def _get_conv_output(self, shape):
+        with torch.no_grad():
+            x = torch.zeros(1, *shape)
+            x = F.relu(self.conv1(x))
+            x = F.relu(self.conv2(x))
+            output = x.view(1, -1).size(1)
+            return output
+    
+    def forward(self, x):
+        if x.dtype != torch.float32:
+            x = x.float()
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        return self.fc2(x)
