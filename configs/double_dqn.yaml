@@ -1,48 +1,61 @@
-algorithm: double_dqn
+# using same hyperparameters as the atari paper
+algorithm: atari_dqn
 
 env:
   game: "SuperMarioBros-Nes-v0"
-  render_mode: human
-
+  render_mode: None
 model:
-  type: double_dqn
-  hidden_dim: 128
-
+  type: atari_cnn
+# 50 million total frames, 12.5 million action steps, 3 mil gradient steps
+# all values here are converted to action steps
 training:
-  total_steps: 1000000
-  lr: !!float 1e-4
+  num_envs: 16
+  total_steps: 12500000
+  lr: 0.0005
   gamma: 0.99
 
   batch_size: 64
-  buffer_size: 50000
+  #shrunk due to memory limitations
+  buffer_size: 250000
 
   epsilon_start: 1.0
   epsilon_min: 0.1
-  epsilon_steps: 10000
+  #1m frames
+  epsilon_steps: 250000
 
-  update_target_steps: 2000
+  grad_momentum: 0.95
+  squared_momentum: 0.95
+  ms_grad: 0.01
+# 10k param updates, 40k action steps
+  update_target_steps: 10000
+  grad_update_freq: 4
+  action_repeat: 4
+  save_every: 1000000
+
+  replay_start_size: 50000
 
 observation:
   pipeline:
-    - name: action_repeat
-      count: 4
-    - name: resize
-      width: 128
-      height: 64
-    - name: grayscale
-    - name: frame_buffer
-      count: 4
+  - name: limited_action_space
+  - name: action_repeat
+    count: 4
+  - name: resize
+    width: 120
+    height: 112
+  - name: grayscale
+  - name: frame_buffer
+    count: 4
 
 reward:
   pipeline:
   - name: reset
   - name: ram_death_penalty
-    penalty: -0.5
+    penalty: -1.0
   - name: survival
-    value: -0.1
+    value: -0.005
   - name: earn_score
-    weight: 0.03
+    weight: 0.02
   - name: player_position
-    weight: 0.015
+    weight: 0.025
   - name: new_screen
     weight: 0.5
