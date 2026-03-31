@@ -87,7 +87,7 @@ class AtariDQN(BaseAlgorithm):
         if self.action_steps >= self.epsilon_steps:
             return self.min_epsilon
         fraction = self.action_steps / self.epsilon_steps
-        return 1.0 + fraction * (self.min_epsilon - 1)
+        return self.epsilon_start + fraction * (self.min_epsilon - self.epsilon_start)
 
     def train(self, total_steps, callback):
         obs, _ = self.env.reset()
@@ -172,6 +172,9 @@ class AtariDQN(BaseAlgorithm):
         
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size, self.device)
 
+        rewards = rewards.view(-1)
+        dones = dones.view(-1).float()
+
         q_values = self.policy_net(states / 255.0)
         q_sa = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
 
@@ -189,6 +192,7 @@ class AtariDQN(BaseAlgorithm):
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 10.0)
         self.optimizer.step()
 
         self.param_updates += 1

@@ -3,7 +3,7 @@ from . import register_reward
 
 @register_reward("ram_death_penalty")
 class RamDeathPenalty(gym.Wrapper):
-    def __init__(self, env, penalty = -1000):
+    def __init__(self, env, penalty = -1.0):
         super().__init__(env)
         self.penalty = penalty
     

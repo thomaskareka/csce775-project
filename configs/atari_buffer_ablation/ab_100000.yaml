@@ -1,4 +1,4 @@
 include: ./base.yaml
 
 training:
-  buffer_size: 10000
+  buffer_size: 100000
