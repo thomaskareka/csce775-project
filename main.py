@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from config import load_config
 from runners.train_runner import TrainRunner
@@ -31,11 +32,21 @@ def main():
         runner.train()
     elif args.mode == "eval":
         print("Evaluating model")
-        runner = EvalRunner.load_checkpoint(args.checkpoint)
+        checkpoint_path = args.checkpoint
+        # If a directory is provided, look for final.pt
+        if Path(checkpoint_path).is_dir():
+            checkpoint_path = str(Path(checkpoint_path) / "final.pt")
+        runner = EvalRunner.load_checkpoint(checkpoint_path)
         result = runner.evaluate(args.episodes)
+        exp_dir = Path(args.checkpoint) if Path(args.checkpoint).is_dir() else Path(args.checkpoint).parent
+        runner.append_eval_results(exp_dir)
     elif args.mode == "resume":
         print("resuming form checkpoint")
-        runner = TrainRunner.load_checkpoint(args.checkpoint)
+        checkpoint_path = args.checkpoint
+        # If a directory is provided, look for final.pt
+        if Path(checkpoint_path).is_dir():
+            checkpoint_path = str(Path(checkpoint_path) / "final.pt")
+        runner = TrainRunner.load_checkpoint(checkpoint_path)
         runner.train()
     else:
         raise ValueError(f"unknown mode {args.mode}")

@@ -7,7 +7,7 @@ class BaseAlgorithm:
         self.device = device
         self.config = config
     
-    def train(self, total_steps: int, callback):
+    def train(self, total_steps: int, callback, logger=None):
         raise NotImplementedError
 
     def state_dict(self):

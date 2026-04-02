@@ -89,7 +89,7 @@ class AtariDQN(BaseAlgorithm):
         fraction = self.action_steps / self.epsilon_steps
         return self.epsilon_start + fraction * (self.min_epsilon - self.epsilon_start)
 
-    def train(self, total_steps, callback):
+    def train(self, total_steps, callback, logger=None):
         obs, _ = self.env.reset()
         episode_rewards = np.zeros(self.num_envs)
 
@@ -164,7 +164,17 @@ class AtariDQN(BaseAlgorithm):
                 })
                 last_time = now
                 last_steps = self.action_steps
-
+        
+        pbar.close()
+        
+        # Return metrics for final results logging
+        return {
+            "last_loss": loss if loss else 0.0,
+            "num_episodes": self.action_steps,
+            "mean_return": 0.0,
+            "std_return": 0.0,
+            "mean_episode_length": 0.0
+        }
 
     def train_step(self):
         if len(self.replay_buffer) < self.batch_size:

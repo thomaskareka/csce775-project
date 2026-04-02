@@ -28,7 +28,10 @@ class Reptile(BaseAlgorithm):
         self.save_every = config["save_every"]
         self.num_envs = config["num_envs"]
 
-        self.replay_buffer = self.make_buffer()
+        if self.num_envs > 1:
+            self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.single_observation_space.shape)
+        else:
+            self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
 
         self.tasks_done = 0
         self.action_steps = 0
@@ -37,12 +40,6 @@ class Reptile(BaseAlgorithm):
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.task_optimizer = torch.optim.SGD(self.model.parameters(), lr=self.inner_lr)
-
-    def make_buffer(self):
-        if self.num_envs > 1:
-            return ReplayBuffer(self.buffer_size, self.env.single_observation_space.shape)
-        else:
-            return ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
 
     def choose_action(self, obs, model = None):
         if model is None:
@@ -140,7 +137,7 @@ class Reptile(BaseAlgorithm):
         
         return returns
 
-    def train(self, total_tasks, callback):
+    def train(self, total_tasks, callback, logger=None):
         self.model.train()
         obs, _ = self.env.reset()
 
@@ -160,7 +157,10 @@ class Reptile(BaseAlgorithm):
             task_model.load_state_dict(self.model.state_dict())
             self.task_optimizer = torch.optim.SGD(task_model.parameters(), lr=self.inner_lr)
 
-            self.replay_buffer = self.make_buffer() #reset each task
+            if self.num_envs > 1:
+                self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.single_observation_space.shape)
+            else:
+                self.replay_buffer = ReplayBuffer(self.buffer_size, self.env.observation_space.shape)
 
             completed_episodes = 0
             if self.num_envs > 1:
@@ -267,7 +267,17 @@ class Reptile(BaseAlgorithm):
             if callback and self.tasks_done - last_save_step >= self.save_every:
                 callback()
                 last_save_step = self.tasks_done
-
+        
+        pbar.close()
+        
+        # Return metrics for final results logging
+        return {
+            "last_loss": replay_buffer_loss if replay_buffer_loss else 0.0,
+            "num_episodes": self.episodes_done,
+            "mean_return": 0.0,  # Would need episode-level tracking
+            "std_return": 0.0,
+            "mean_episode_length": 0.0
+        }
 
     def state_dict(self):
         return {
