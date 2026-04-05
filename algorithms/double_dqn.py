@@ -9,8 +9,8 @@ from algorithms import register_algorithm
 from algorithms.base import BaseAlgorithm
 from utils.replay_buffer import ReplayBuffer
 
-@register_algorithm("atari_dqn")
-class AtariDQN(BaseAlgorithm):
+@register_algorithm("double_atari_dqn")
+class DoubleAtariDQN(BaseAlgorithm):
     def __init__(self, model, env, device, config):
         super().__init__(model, env, device, config)
 
@@ -222,8 +222,6 @@ class AtariDQN(BaseAlgorithm):
         }
 
     def load_state_dict(self, state):
-        print(state)
-
         self.optimizer.load_state_dict(state["optimizer"])
         self.target_net.load_state_dict(state["target_net"])
 

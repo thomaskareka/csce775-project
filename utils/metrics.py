@@ -44,18 +44,24 @@ class TrainingMetrics:
 @dataclass
 class EpisodeMetrics:
     """Per-episode summary metrics collected during training."""
-    episode_idx: int
-    total_reward: float
-    episode_length: int
-    max_x_position: Optional[float] = None
-    final_epsilon: Optional[float] = None
-    # Mario-specific metrics
-    max_score: Optional[float] = None
-    level_completed: Optional[bool] = None
-    coins_collected: Optional[int] = None
-    # Computed metrics
-    velocity: Optional[float] = None  # x_position / episode_length
-    extra_metrics: Dict[str, Any] = field(default_factory=dict)
+    total_reward: float = 0.0
+    episode_length: int = 0
+    max_x_position: int = 0
+    score: int = 0
+    coins: int = 0
+
+    def update_from_info(self, info, reward):
+        x_pos = ((info.get('xscrollHi', 0) << 8) | info.get('xscrollLo', 0))
+        self.max_x_position = max(self.max_x_position, x_pos)
+        self.score = info.get('score', self.score)
+        self.coins = info.get('coins', self.coins)
+        self.total_reward += reward
+        self.episode_length += 1
+    
+    def __str__(self):
+        return f"Reward: {self.total_reward:.2f}, Length: {self.episode_length}, Max X: {self.max_x_position}, Score: {self.score}, Coins: {self.coins}"
+
+
 
 
 @dataclass

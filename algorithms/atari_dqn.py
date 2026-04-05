@@ -217,8 +217,6 @@ class AtariDQN(BaseAlgorithm):
         }
 
     def load_state_dict(self, state):
-        print(state)
-
         self.optimizer.load_state_dict(state["optimizer"])
         self.target_net.load_state_dict(state["target_net"])
 

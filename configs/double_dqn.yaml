@@ -1,5 +1,5 @@
 # using same hyperparameters as the atari paper
-algorithm: atari_dqn
+algorithm: double_atari_dqn
 
 env:
   game: "SuperMarioBros-Nes-v0"

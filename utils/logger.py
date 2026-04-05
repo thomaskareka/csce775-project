@@ -17,6 +17,7 @@ Usage:
     # Writer automatically closed on exit
 """
 
+import json
 from pathlib import Path
 from typing import Optional, Dict, Any
 from torch.utils.tensorboard import SummaryWriter
@@ -88,7 +89,7 @@ class Logger:
         
         self.writer.add_hparams(hparams, metrics)
 
-    def finalize_results(self, results: 'ExperimentResults') -> None:
+    def finalize_results(self, results) -> None:
         """
         Persist final experiment results to JSON file.
         
@@ -99,7 +100,8 @@ class Logger:
             return
         
         results_path = self.exp_dir / "results.json"
-        results.to_json(results_path)
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=4)
 
     def close(self) -> None:
         """Close TensorBoard writer and cleanup resources."""

@@ -16,6 +16,7 @@ def parse_args():
     eval_parser = subparsers.add_parser("eval")
     eval_parser.add_argument("--checkpoint", type=str, required=True)
     eval_parser.add_argument("--episodes", type=int, default=10)
+    eval_parser.add_argument("--envs", type=int, default=1)
 
     resume_parser = subparsers.add_parser("resume")
     resume_parser.add_argument("--checkpoint", type=str, required=True)
@@ -36,10 +37,14 @@ def main():
         # If a directory is provided, look for final.pt
         if Path(checkpoint_path).is_dir():
             checkpoint_path = str(Path(checkpoint_path) / "final.pt")
-        runner = EvalRunner.load_checkpoint(checkpoint_path)
-        result = runner.evaluate(args.episodes)
+    
+        runner = EvalRunner.load_checkpoint(checkpoint_path, args.envs)
         exp_dir = Path(args.checkpoint) if Path(args.checkpoint).is_dir() else Path(args.checkpoint).parent
-        runner.append_eval_results(exp_dir)
+
+        result = runner.evaluate(args.episodes, args.envs, directory=exp_dir)
+        
+        # runner.append_eval_results(exp_dir)
+
     elif args.mode == "resume":
         print("resuming form checkpoint")
         checkpoint_path = args.checkpoint
