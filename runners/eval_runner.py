@@ -53,38 +53,53 @@ class EvalRunner:
         pbar = tqdm(total=num_episodes, desc="Evaluating", unit="episode")
 
         obs, _ = self.env.reset(seed=self.seed)
-        active_episodes = [EpisodeMetrics() for _ in range(num_envs)] # track data from each episode
+
         while len(finished_episodes) < num_episodes:
-            actions = self.algorithm.choose_action(obs)
-            obs, rewards, terminated, truncated, info = self.env.step(actions)
-            info = [
-                {key: value[i] for key, value in info.items()}
-                for i in range(num_envs)
-            ]
+            remaining = num_episodes - len(finished_episodes)
+            batch_size = min(self.num_envs, remaining)
 
-            dones = np.logical_or(terminated, truncated)
-            for i in range(self.num_envs):
-                active_episodes[i].update_from_info(info[i], rewards[i])
-                if dones[i]:
-                    if log_results:
-                        logger.log_episode_metric(
-                            episode_idx=episode_idx,
-                            metrics={
-                                "total_reward": active_episodes[i].total_reward,
-                                "episode_length": active_episodes[i].episode_length,
-                                "max_x_position": active_episodes[i].max_x_position,
-                                "score": active_episodes[i].score,
-                                "coins": active_episodes[i].coins,
-                            },
-                            group="EvalEpisodes"
-                        )
+            active_episodes = [EpisodeMetrics() for _ in range(num_envs)] # track data from each episode
+            active_mask = np.zeros(self.num_envs, dtype=bool)
+            active_mask[:batch_size] = True
 
-                    episode_idx += 1
-                    finished_episodes.append(active_episodes[i])
-                    active_episodes[i] = EpisodeMetrics()
-                    pbar.update(1)
-                    if not log_results:
+            wave_done = np.zeros(self.num_envs, dtype=bool)
+
+            while not np.all(wave_done[:batch_size]):
+                actions = self.algorithm.choose_action(obs)
+                obs, rewards, terminated, truncated, info = self.env.step(actions)
+                info = [
+                    {key: value[i] for key, value in info.items()}
+                    for i in range(num_envs)
+                ]
+
+                dones = np.logical_or(terminated, truncated)
+                for i in range(self.num_envs):
+                    if not active_mask[i]: #envs auto reset, if its done ignore it until all other envs are finished
+                        #to prevent biasing towards shorter episodes
                         continue
+                    active_episodes[i].update_from_info(info[i], rewards[i])
+                    if dones[i]:
+                        if log_results:
+                            logger.log_episode_metric(
+                                episode_idx=episode_idx,
+                                metrics={
+                                    "total_reward": active_episodes[i].total_reward,
+                                    "episode_length": active_episodes[i].episode_length,
+                                    "max_x_position": active_episodes[i].max_x_position,
+                                    "score": active_episodes[i].score,
+                                    "coins": active_episodes[i].coins,
+                                },
+                                group="EvalEpisodes"
+                            )
+
+                        episode_idx += 1
+                        finished_episodes.append(active_episodes[i])
+
+                        active_mask[i] = False
+                        wave_done[i] = True
+                        pbar.update(1)
+
+
         pbar.close()
 
         # Compute summary statistics
@@ -98,6 +113,8 @@ class EvalRunner:
         summary_metrics = {
             "num_episodes": returns.size,
             "mean_return": float(returns.mean()),
+            "min_return": float(returns.min()),
+            "max_return": float(returns.max()),
             "std_return": float(returns.std()),
             "mean_length": float(lengths.mean()),
             "mean_max_x": float(max_x_positions.mean()),
