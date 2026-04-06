@@ -21,6 +21,7 @@ import json
 from pathlib import Path
 from typing import Optional, Dict, Any
 from torch.utils.tensorboard import SummaryWriter
+from utils.metrics import ExperimentResults
 
 
 class Logger:
@@ -89,7 +90,7 @@ class Logger:
         
         self.writer.add_hparams(hparams, metrics)
 
-    def finalize_results(self, results) -> None:
+    def finalize_results(self, results: ExperimentResults) -> None:
         """
         Persist final experiment results to JSON file.
         
@@ -101,7 +102,7 @@ class Logger:
         
         results_path = self.exp_dir / "results.json"
         with open(results_path, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump(results.to_dict(), f, indent=4)
 
     def close(self) -> None:
         """Close TensorBoard writer and cleanup resources."""
