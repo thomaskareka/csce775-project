@@ -90,7 +90,7 @@ class Logger:
         
         self.writer.add_hparams(hparams, metrics)
 
-    def finalize_results(self, results: ExperimentResults) -> None:
+    def finalize_results(self, results) -> None:
         """
         Persist final experiment results to JSON file.
         
@@ -101,8 +101,10 @@ class Logger:
             return
         
         results_path = self.exp_dir / "results.json"
+        if not isinstance(results, dict):
+            results = results.to_dict()
         with open(results_path, "w") as f:
-            json.dump(results.to_dict(), f, indent=4)
+            json.dump(results, f, indent=4)
 
     def close(self) -> None:
         """Close TensorBoard writer and cleanup resources."""

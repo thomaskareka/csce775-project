@@ -73,11 +73,12 @@ class EvalRunner:
                 ]
 
                 dones = np.logical_or(terminated, truncated)
+                ram = self.env.call("get_ram")
                 for i in range(self.num_envs):
                     if not active_mask[i]: #envs auto reset, if its done ignore it until all other envs are finished
                         #to prevent biasing towards shorter episodes
                         continue
-                    active_episodes[i].update_from_info(info[i], rewards[i])
+                    active_episodes[i].update_from_info(info[i], rewards[i], ram[i])
                     if dones[i]:
                         if log_results:
                             logger.log_episode_metric(

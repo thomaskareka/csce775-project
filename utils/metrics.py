@@ -31,6 +31,8 @@ from datetime import datetime
 import json
 from pathlib import Path
 
+from utils.from_ram import get_x_pos_adjusted
+
 
 @dataclass
 class TrainingMetrics:
@@ -50,9 +52,9 @@ class EpisodeMetrics:
     score: int = 0
     coins: int = 0
 
-    def update_from_info(self, info, reward):
-        x_pos = ((info.get('xscrollHi', 0) << 8) | info.get('xscrollLo', 0))
-        self.max_x_position = max(self.max_x_position, x_pos)
+    def update_from_info(self, info, reward, ram):
+        pos = get_x_pos_adjusted(ram)
+        self.max_x_position = max(self.max_x_position, pos)
         self.score = info.get('score', self.score)
         self.coins = info.get('coins', self.coins)
         self.total_reward += reward

@@ -4,6 +4,7 @@ from pathlib import Path
 from config import load_config
 from runners.train_runner import TrainRunner
 from runners.eval_runner import *
+from utils.get_checkpoints import get_checkpoints
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -14,7 +15,7 @@ def parse_args():
     train_parser.add_argument("--config", type=str, required=True)
 
     eval_parser = subparsers.add_parser("eval")
-    eval_parser.add_argument("--checkpoint", type=str, required=True)
+    eval_parser.add_argument("--checkpoint", type=str, required=True, help="path to file evaluates single checkpoint, directory evaluates all checkpoints within")
     eval_parser.add_argument("--episodes", type=int, default=10)
     eval_parser.add_argument("--envs", type=int, default=1)
 
@@ -34,10 +35,11 @@ def main():
     elif args.mode == "eval":
         print("Evaluating model")
         checkpoint_path = args.checkpoint
-        # If a directory is provided, look for final.pt
+
         if Path(checkpoint_path).is_dir():
-            checkpoint_path = str(Path(checkpoint_path) / "final.pt")
-    
+            # checkpoint_path = str(Path(checkpoint_path) / "final.pt")
+            checkpoints = get_checkpoints(checkpoint_path)
+            print(f"Found {len(checkpoints)} checkpoints")
         runner = EvalRunner.load_checkpoint(checkpoint_path, args.envs)
         exp_dir = Path(args.checkpoint) if Path(args.checkpoint).is_dir() else Path(args.checkpoint).parent
 
