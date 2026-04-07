@@ -78,7 +78,7 @@ class Reptile(BaseAlgorithm):
             logits = task_model(states)
             dist = Categorical(logits=logits)
             log_probs = dist.log_prob(actions)
-            f_sa = logits.gather(1, actions.unsqueeze(1)).squeeze(1)
+            f_sa = logits.gather(1, actions.unsqueeze(1)).squeeze(1).detach()
 
             with torch.no_grad():
                 next_logits = task_model(next_states)
@@ -103,16 +103,29 @@ class Reptile(BaseAlgorithm):
         actions_tensor = torch.as_tensor(np.asarray(actions), dtype=torch.long, device=self.device).view(-1)
         returns_tensor = self.calculate_returns(rewards)
 
-        logits = task_model(obs_tensor)
-        dist = Categorical(logits=logits)
-        log_probs = dist.log_prob(actions_tensor)
-        loss = -(log_probs * returns_tensor.detach()).mean()
+        n = obs_tensor.shape[0]
 
         self.task_optimizer.zero_grad()
-        loss.backward()
+        total_loss = 0.0
+        for start in range(0, n, self.batch_size):
+            end = min(start + self.batch_size, n)
+
+            obs_chunk = obs_tensor[start:end]
+            actions_chunk = actions_tensor[start:end]
+            returns_chunk = returns_tensor[start:end]
+
+            logits = task_model(obs_chunk)
+            dist = Categorical(logits=logits)
+            log_probs = dist.log_prob(actions_chunk)
+
+            chunk_loss = -(log_probs * returns_chunk).sum() / n
+            chunk_loss.backward()
+            total_loss += chunk_loss.item()
+
+            del log_probs, dist, logits, obs_chunk, actions_chunk, returns_chunk
         self.task_optimizer.step()
 
-        return loss.item()
+        return total_loss
         
         
     def reptile_update(self, task_model):

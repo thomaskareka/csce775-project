@@ -1,4 +1,3 @@
-# using same hyperparameters as the atari paper
 algorithm: ramario
 
 env:
@@ -6,7 +5,7 @@ env:
   render_mode: none
 
 model:
-  type: atari_cnn
+  type: ramario_cnn
 
 training:
   num_envs: 16
@@ -18,7 +17,7 @@ training:
   epsilon_min: 0.1
   epsilon_steps: 8
 
-  total_steps: 100
+  total_steps: 10
   episodes_per_task: 10
   num_grad_steps: 10
   lr: 0.001
