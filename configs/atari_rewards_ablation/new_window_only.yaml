@@ -1,0 +1,7 @@
+include: ./base.yaml
+
+reward:
+  pipeline:
+  - name: reset
+  - name: new_screen
+    weight: 0.5

@@ -1,0 +1,7 @@
+include: ./base.yaml
+
+reward:
+  pipeline:
+  - name: reset
+  - name: ram_death_penalty
+    weight: -1.0
