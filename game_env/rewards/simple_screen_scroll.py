@@ -1,7 +1,7 @@
 import gymnasium as gym
 from . import register_reward
 
-@register_reward("screen_scroll")
+@register_reward("simple_screen_scroll")
 class ScreenScrollReward(gym.Wrapper):
     def __init__(self, env, weight = 0.1):
         super().__init__(env)
