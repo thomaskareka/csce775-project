@@ -3,5 +3,5 @@ include: ./base.yaml
 reward:
   pipeline:
   - name: reset
-  - name: new_screen
-    weight: 0.5
+  - name: screen_scroll_amount
+    weight: 0.1

@@ -24,7 +24,6 @@ class PlayerPositionReward(gym.Wrapper):
             reward = 0
             return obs, reward, terminated, truncated, info
 
-
         if pos > self.max_pos:
             delta = min(pos - self.max_pos, 5)
             reward += self.value * delta

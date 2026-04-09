@@ -6,24 +6,12 @@ class ScreenScrollReward(gym.Wrapper):
     def __init__(self, env, weight = 0.1):
         super().__init__(env)
         self.value = weight
-        self.last_pos = 0
 
+# just if the screen is scrolling, no other logic
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         # scrolling = self.env.unwrapped.get_ram()[0x0775]
-        x_low = info.get('xscrollLo', 0)
-        x_high = info.get('xscrollHi', 0)
-
-        level_high = info.get('levelHi', 0)
-        level_low = info.get('levelLo', 0)
-        level = (level_high << 8) | level_low
-
-        pos = (x_high << 8) | x_low
-        if level != self.last_level:
-            self.last_level = level
-            self.last_pos = pos
-            
-        if(pos > self.last_pos):
+        scrolling = info.get('scrolling', 0)
+        if scrolling > 16:
             reward += self.value
-        self.last_pos = pos
         return obs, reward, terminated, truncated, info

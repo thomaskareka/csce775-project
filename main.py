@@ -4,7 +4,7 @@ from pathlib import Path
 from config import load_config
 from runners.train_runner import TrainRunner
 from runners.eval_runner import *
-from utils.get_checkpoints import get_checkpoints
+from utils.get_checkpoints import get_checkpoints, get_configs
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -13,6 +13,7 @@ def parse_args():
 
     train_parser = subparsers.add_parser("train")
     train_parser.add_argument("--config", type=str, required=True)
+    train_parser.add_argument("--batch", action="store_true", help="train all configs in the directory")
 
     eval_parser = subparsers.add_parser("eval")
     eval_parser.add_argument("--checkpoint", type=str, required=True, help="path to file evaluates single checkpoint, directory evaluates all checkpoints within")
@@ -29,9 +30,18 @@ def main():
 
     if args.mode == "train":
         print("Training")
-        config = load_config(args.config)
-        runner = TrainRunner(config)
-        runner.train()
+        if args.batch:
+            config_files = get_configs(args.config)
+            print(f"found {len(config_files)} config files")
+            for file in config_files:
+                print(f"training with config {file}")
+                config = load_config(file)
+                runner = TrainRunner(config)
+                runner.train()
+        else:
+            config = load_config(args.config)
+            runner = TrainRunner(config)
+            runner.train()
     elif args.mode == "eval":
         print("Evaluating model")
         checkpoint_path = args.checkpoint
