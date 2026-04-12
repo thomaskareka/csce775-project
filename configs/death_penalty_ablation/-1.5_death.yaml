@@ -1,0 +1,6 @@
+include: ./base.yaml
+
+reward:
+  pipeline:
+  - name: ram_death_penalty
+    penalty: -1.5

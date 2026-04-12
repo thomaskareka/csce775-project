@@ -1,0 +1,61 @@
+# using same hyperparameters as the atari paper
+algorithm: atari_dqn
+
+env:
+  game: "SuperMarioBros-Nes-v0"
+  render_mode: human
+model:
+  type: atari_cnn
+# 50 million total frames, 12.5 million action steps, 3 mil gradient steps
+# all values here are converted to action steps
+training:
+  num_envs: 1
+  total_steps: 12500000
+  lr: !!float 1e-4
+  gamma: 0.99
+
+  batch_size: 64
+  #shrunk due to memory limitations
+  buffer_size: 25000
+
+  epsilon_start: 1.0
+  epsilon_min: 0.1
+  #1m frames
+  epsilon_steps: 50000
+
+  grad_momentum: 0.95
+  squared_momentum: 0.95
+  ms_grad: 0.01
+# 10k param updates, 40k action steps
+  update_target_steps: 10000
+  grad_update_freq: 4
+  action_repeat: 4
+  save_every: 1000000
+
+  replay_start_size: 50000
+
+observation:
+  pipeline:
+  - name: limited_action_space
+  - name: action_repeat
+    count: 4
+  - name: resize
+    width: 120
+    height: 112
+  - name: grayscale
+  - name: frame_buffer
+    count: 4
+
+reward:
+  pipeline:
+  - name: reset
+  - name: ram_death_penalty
+    penalty: -0.6
+  - name: survival
+    value: -0.01
+  - name: earn_score
+    weight: 1.0
+  - name: player_position
+    weight: 0.6
+  - name: screen_scroll_amount
+    weight: 0.8

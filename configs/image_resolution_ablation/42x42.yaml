@@ -1,0 +1,13 @@
+include: ./base.yaml
+
+observation:
+  pipeline:
+  - name: limited_action_space
+  - name: action_repeat
+    count: 4
+  - name: resize
+    width: 42
+    height: 42
+  - name: grayscale
+  - name: frame_buffer
+    count: 4

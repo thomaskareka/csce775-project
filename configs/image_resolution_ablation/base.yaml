@@ -1,0 +1,45 @@
+algorithm: atari_dqn
+env:
+  game: "SuperMarioBros-Nes-v0"
+  render_mode: None
+model:
+  type: atari_cnn
+
+training:
+  num_envs: 16
+  total_steps: 500000
+  lr: 0.0005
+  gamma: 0.99
+
+  batch_size: 64
+  buffer_size: 250000
+
+  epsilon_start: 1.0
+  epsilon_min: 0.1
+  #1m frames
+  epsilon_steps: 250000
+
+  grad_momentum: 0.95
+  squared_momentum: 0.95
+  ms_grad: 0.01
+# 10k param updates, 40k action steps
+  update_target_steps: 10000
+  grad_update_freq: 4
+  action_repeat: 4
+  save_every: 100000
+
+  replay_start_size: 50000
+
+reward:
+  pipeline:
+  - name: reset
+  - name: ram_death_penalty
+    penalty: -1.0
+  - name: survival
+    value: -0.005
+  - name: earn_score
+    weight: 0.02
+  - name: player_position
+    weight: 0.025
+  - name: new_screen
+    weight: 0.5
