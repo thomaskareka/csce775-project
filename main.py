@@ -38,6 +38,7 @@ def main():
                 config = load_config(file)
                 runner = TrainRunner(config)
                 runner.train()
+                del runner
         else:
             config = load_config(args.config)
             runner = TrainRunner(config)

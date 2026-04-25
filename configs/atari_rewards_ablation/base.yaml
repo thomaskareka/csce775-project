@@ -27,7 +27,7 @@ training:
   update_target_steps: 10000
   grad_update_freq: 4
   action_repeat: 4
-  save_every: 100000
+  save_every: 500000
 
   replay_start_size: 50000
 

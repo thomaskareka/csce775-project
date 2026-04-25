@@ -31,13 +31,5 @@ def get_configs(directory: str) -> list[Path]:
     if not path.is_dir():
         raise FileNotFoundError(f"provided path {directory} is not a valid directory")
     
-    config_pattern = re.compile(r"config(.*?)\.yaml")
-
-    configs = []
-    for file in path.iterdir():
-        if file.is_file():
-            match = config_pattern.match(file.name)
-            if match:
-                configs.append((match.group(1), file))
-    configs.sort(key=lambda x: x[0])
-    return [file for _, file in configs]
+    configs = list(path.glob("*.yaml"))
+    return configs

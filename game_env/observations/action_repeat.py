@@ -1,3 +1,5 @@
+import time
+
 import gymnasium, stable_retro
 from . import register_observation
 

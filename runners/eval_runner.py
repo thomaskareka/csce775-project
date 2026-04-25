@@ -167,6 +167,7 @@ class EvalRunner:
             while not done:
                 action = self.algorithm.choose_action(obs)
                 obs, reward, terminated, truncated, _ = self.env.step(action)
+                print(reward)
                 done = terminated or truncated
 
                 total_reward += np.clip(reward, -1, 1)

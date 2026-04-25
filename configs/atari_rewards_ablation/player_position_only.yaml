@@ -4,4 +4,4 @@ reward:
   pipeline:
   - name: reset
   - name: player_position
-    weight: 0.025
+    weight: 0.05

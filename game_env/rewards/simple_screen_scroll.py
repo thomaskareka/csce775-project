@@ -12,6 +12,7 @@ class ScreenScrollReward(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         # scrolling = self.env.unwrapped.get_ram()[0x0775]
         scrolling = info.get('scrolling', 0)
-        if scrolling > 16:
+        print(scrolling)
+        if scrolling > 17:
             reward += self.value
         return obs, reward, terminated, truncated, info

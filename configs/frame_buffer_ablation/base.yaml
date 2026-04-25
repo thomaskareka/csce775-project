@@ -44,3 +44,17 @@ reward:
     weight: 0.025
   - name: new_screen
     weight: 0.5
+  
+include: ./base.yaml
+
+observation:
+  pipeline:
+  - name: limited_action_space
+  - name: action_repeat
+    count: 4
+  - name: resize
+    width: 120
+    height: 112
+  - name: grayscale
+  - name: frame_buffer
+    count: 1
